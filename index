@@ -1,0 +1,973 @@
+import React, { useState, useEffect, useMemo } from "react";
+import {
+  Activity, Plus, Wallet, BarChart3, TrendingUp, TrendingDown, Lock,
+  ShieldCheck, ShieldAlert, Target, AlertTriangle, CheckCircle2, XCircle,
+  Clock, RefreshCw, Award, DollarSign, Zap, Ban,
+} from "lucide-react";
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell,
+} from "recharts";
+
+/* =========================================================================
+   SEED DATA
+   ========================================================================= */
+
+const initialAccounts = [
+  {
+    id: "acc1", name: "Account 1", tier: "Funded", size: "$50K",
+    startingBalance: 50000, dllThreshold: 1000, trailDistance: 2000, targetProfit: 5000,
+    dailyStartBalance: 53530, currentBalance: 53850, currentEquity: 54020,
+    peakBalance: 54350, peakEquity: 54520,
+  },
+  {
+    id: "acc2", name: "Account 2", tier: "Funded", size: "$100K",
+    startingBalance: 100000, dllThreshold: 2000, trailDistance: 3000, targetProfit: 10000,
+    dailyStartBalance: 104650, currentBalance: 104200, currentEquity: 104080,
+    peakBalance: 105300, peakEquity: 105550,
+  },
+  {
+    id: "acc3", name: "Account 3", tier: "Funded", size: "$50K",
+    startingBalance: 50000, dllThreshold: 1000, trailDistance: 2000, targetProfit: 5000,
+    dailyStartBalance: 51200, currentBalance: 50150, currentEquity: 50080,
+    peakBalance: 51500, peakEquity: 51680,
+  },
+  {
+    id: "acc4", name: "Account 4", tier: "Evaluation", size: "$25K",
+    startingBalance: 25000, dllThreshold: 500, trailDistance: 1500, targetProfit: 2000,
+    dailyStartBalance: 25995, currentBalance: 25600, currentEquity: 25550,
+    peakBalance: 26050, peakEquity: 26140,
+  },
+  {
+    id: "acc5", name: "Account 5", tier: "Funded", size: "$100K",
+    startingBalance: 100000, dllThreshold: 2000, trailDistance: 3000, targetProfit: 10000,
+    dailyStartBalance: 97450, currentBalance: 97200, currentEquity: 97150,
+    peakBalance: 101800, peakEquity: 102050,
+  },
+];
+
+const initialTrades = [
+  { id: 1, accountId: "acc1", date: "Jun 9", grade: "A+", phase: "phase2", triggers: ["Displacement", "BOS", "Close"], pnl: 680 },
+  { id: 2, accountId: "acc2", date: "Jun 10", grade: "A+", phase: "phase2", triggers: ["Displacement", "BOS"], pnl: 540 },
+  { id: 3, accountId: "acc1", date: "Jun 11", grade: "A+", phase: "phase2", triggers: ["Displacement", "BOS", "Close"], pnl: 410 },
+  { id: 4, accountId: "acc4", date: "Jun 12", grade: "A+", phase: "phase2", triggers: ["BOS", "Close"], pnl: -220 },
+  { id: 5, accountId: "acc2", date: "Jun 15", grade: "A+", phase: "phase2", triggers: ["Displacement", "BOS", "Close"], pnl: 590 },
+  { id: 6, accountId: "acc1", date: "Jun 8", grade: "A", phase: "phase1", triggers: ["Displacement", "BOS"], pnl: 260 },
+  { id: 7, accountId: "acc3", date: "Jun 16", grade: "A", phase: "phase2", triggers: ["BOS", "Close"], pnl: 310 },
+  { id: 8, accountId: "acc2", date: "Jun 17", grade: "A", phase: "phase1", triggers: ["Displacement"], pnl: -180 },
+  { id: 9, accountId: "acc4", date: "Jun 18", grade: "A", phase: "phase2", triggers: ["Displacement", "BOS", "Close"], pnl: 295 },
+  { id: 10, accountId: "acc1", date: "Jun 19", grade: "A", phase: "phase2", triggers: ["BOS", "Close"], pnl: 340 },
+  { id: 11, accountId: "acc3", date: "Jun 22", grade: "A", phase: "phase1", triggers: ["Displacement", "BOS"], pnl: -150 },
+  { id: 12, accountId: "acc2", date: "Jun 23", grade: "A", phase: "phase2", triggers: ["Displacement", "BOS", "Close"], pnl: 410 },
+  { id: 13, accountId: "acc4", date: "Jun 24", grade: "A", phase: "phase1", triggers: ["BOS"], pnl: -140 },
+  { id: 14, accountId: "acc1", date: "Jun 25", grade: "A", phase: "phase2", triggers: ["Displacement", "Close"], pnl: 225 },
+  { id: 15, accountId: "acc3", date: "Jun 12", grade: "B", phase: "phase1", triggers: ["BOS"], pnl: 150 },
+  { id: 16, accountId: "acc4", date: "Jun 15", grade: "B", phase: "phase1", triggers: ["Displacement"], pnl: -190 },
+  { id: 17, accountId: "acc1", date: "Jun 17", grade: "B", phase: "phase1", triggers: ["Close"], pnl: -210 },
+  { id: 18, accountId: "acc2", date: "Jun 19", grade: "B", phase: "phase2", triggers: ["BOS", "Close"], pnl: 180 },
+  { id: 19, accountId: "acc3", date: "Jun 24", grade: "B", phase: "phase2", triggers: ["Displacement"], pnl: -160 },
+  { id: 20, accountId: "acc4", date: "Jun 26", grade: "B", phase: "phase2", triggers: ["BOS"], pnl: 140 },
+  { id: 21, accountId: "acc5", date: "Jun 20", grade: "B", phase: "phase1", triggers: ["Displacement", "BOS"], pnl: -230 },
+  { id: 22, accountId: "acc2", date: "Jun 29", grade: "B", phase: "phase1", triggers: ["Close"], pnl: -160 },
+];
+
+const initialPayouts = [
+  { id: 1, accountId: "acc1", date: "Apr 18, 2026", amount: 1800, status: "Paid" },
+  { id: 2, accountId: "acc2", date: "May 22, 2026", amount: 4100, status: "Paid" },
+  { id: 3, accountId: "acc1", date: "Jun 5, 2026", amount: 2450, status: "Paid" },
+  { id: 4, accountId: "acc2", date: "Jun 28, 2026", amount: 3600, status: "Processing" },
+];
+
+const GRADES = ["A+", "A", "B"];
+const PHASES = [
+  { id: "phase1", label: "Phase 1: 0-10m (Continuation)", short: "Phase 1" },
+  { id: "phase2", label: "Phase 2: 10-90m (Mean Reversion)", short: "Phase 2" },
+];
+const TRIGGERS = ["Displacement", "BOS", "Close"];
+
+/* =========================================================================
+   HELPERS
+   ========================================================================= */
+
+function cx(...c) { return c.filter(Boolean).join(" "); }
+
+function fmtMoney(n, opts = {}) {
+  const { showSign = false } = opts;
+  const abs = Math.abs(n);
+  const s = abs.toLocaleString("en-US", { maximumFractionDigits: 0 });
+  const sign = n < 0 ? "-" : showSign && n > 0 ? "+" : "";
+  return `${sign}$${s}`;
+}
+
+function fmtPct(n, d = 1) {
+  if (n === null || n === undefined || Number.isNaN(n)) return "—";
+  return `${n.toFixed(d)}%`;
+}
+
+function getRef(acc, trailMode) {
+  return trailMode === "realtime"
+    ? { current: acc.currentEquity, peak: acc.peakEquity }
+    : { current: acc.currentBalance, peak: acc.peakBalance };
+}
+
+function computeAccountMetrics(acc, trailMode) {
+  const { current, peak } = getRef(acc, trailMode);
+
+  const dailyLossSoFar = Math.max(0, acc.dailyStartBalance - current);
+  const dailyLocked = dailyLossSoFar >= acc.dllThreshold;
+  const dllBuffer = Math.max(0, acc.dllThreshold - dailyLossSoFar);
+
+  const rawTrail = peak - acc.trailDistance;
+  const trailLocked = rawTrail >= acc.startingBalance;
+  const trailingLine = trailLocked ? acc.startingBalance : rawTrail;
+  const trailingBuffer = Math.max(0, current - trailingLine);
+  const breached = current <= trailingLine;
+
+  const targetBalance = acc.startingBalance + acc.targetProfit;
+  const progressToTarget = Math.min(
+    100,
+    Math.max(0, ((current - acc.startingBalance) / acc.targetProfit) * 100)
+  );
+
+  let status = "active";
+  if (breached) status = "failed";
+  else if (dailyLocked) status = "locked";
+  else if (current >= targetBalance) status = "target";
+
+  const worstCaseBuffer = status === "failed" ? 0 : Math.min(dllBuffer, trailingBuffer);
+  const dailyPnL = current - acc.dailyStartBalance;
+
+  return {
+    current, peak, dailyLossSoFar, dailyLocked, dllBuffer, trailingLine, trailLocked,
+    trailingBuffer, breached, targetBalance, progressToTarget, status, worstCaseBuffer, dailyPnL,
+  };
+}
+
+function aggregate(trades, keyFn) {
+  const map = {};
+  trades.forEach((t) => {
+    const k = keyFn(t);
+    if (!map[k]) map[k] = { wins: 0, total: 0, pnl: 0 };
+    map[k].total += 1;
+    if (t.pnl > 0) map[k].wins += 1;
+    map[k].pnl += t.pnl;
+  });
+  return map;
+}
+
+function winRateOf(bucket) {
+  if (!bucket || bucket.total === 0) return null;
+  return (bucket.wins / bucket.total) * 100;
+}
+
+const STATUS_META = {
+  active: { label: "Active", dot: "bg-emerald-400", text: "text-emerald-400", ring: "ring-emerald-900", Icon: ShieldCheck },
+  target: { label: "Payout Ready", dot: "bg-amber-400", text: "text-amber-400", ring: "ring-amber-900", Icon: Award },
+  locked: { label: "Locked · DLL", dot: "bg-yellow-400", text: "text-yellow-400", ring: "ring-yellow-900", Icon: Lock },
+  failed: { label: "Breached", dot: "bg-rose-500", text: "text-rose-400", ring: "ring-rose-900", Icon: Ban },
+};
+
+function nyNow() {
+  const now = new Date();
+  const nyString = now.toLocaleString("en-US", { timeZone: "America/New_York" });
+  return new Date(nyString);
+}
+
+function sessionPhaseInfo(ny) {
+  const open = new Date(ny);
+  open.setHours(9, 30, 0, 0);
+  const diffMin = (ny - open) / 60000;
+  if (diffMin < 0) return { label: "Pre-Market", tone: "text-zinc-500" };
+  if (diffMin <= 10) return { label: `Phase 1 Window · ${Math.floor(diffMin)}m since open`, tone: "text-amber-400" };
+  if (diffMin <= 90) return { label: `Phase 2 Window · ${Math.floor(diffMin)}m since open`, tone: "text-emerald-400" };
+  return { label: "Outside Strategy Window", tone: "text-zinc-500" };
+}
+
+/* =========================================================================
+   SMALL UI PRIMITIVES
+   ========================================================================= */
+
+function StatusPill({ status }) {
+  const m = STATUS_META[status];
+  const Icon = m.Icon;
+  return (
+    <span className={cx("inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold",
+      "bg-zinc-900 border-zinc-800", m.text)}>
+      <span className={cx("h-1.5 w-1.5 rounded-full", m.dot)} />
+      <Icon size={12} />
+      {m.label}
+    </span>
+  );
+}
+
+function GradeBadge({ grade }) {
+  const styles = {
+    "A+": "bg-amber-500 text-zinc-950 border-amber-400",
+    "A": "bg-zinc-900 text-sky-400 border-sky-800",
+    "B": "bg-zinc-900 text-zinc-400 border-zinc-700",
+  };
+  return (
+    <span className={cx("inline-flex items-center justify-center rounded border px-1.5 py-0.5 text-[11px] font-bold font-data", styles[grade])}>
+      {grade}
+    </span>
+  );
+}
+
+function PhaseBadge({ phase }) {
+  const isP2 = phase === "phase2";
+  return (
+    <span className={cx("inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium",
+      isP2 ? "border-emerald-800 text-emerald-400 bg-zinc-900" : "border-orange-800 text-orange-400 bg-zinc-900")}>
+      {isP2 ? "Phase 2 · Reversion" : "Phase 1 · Continuation"}
+    </span>
+  );
+}
+
+function TriggerChips({ triggers }) {
+  return (
+    <div className="flex flex-wrap gap-1">
+      {triggers.map((t) => (
+        <span key={t} className="rounded bg-zinc-800 px-1.5 py-0.5 text-[10px] font-medium text-zinc-300">
+          {t}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function ProgressBar({ pct, colorClass = "bg-amber-500" }) {
+  return (
+    <div className="h-2 w-full overflow-hidden rounded-full bg-zinc-800">
+      <div
+        className={cx("h-full rounded-full transition-all duration-500", colorClass)}
+        style={{ width: `${Math.min(100, Math.max(0, pct))}%` }}
+      />
+    </div>
+  );
+}
+
+function StatCard({ label, value, sub, Icon, tone = "text-zinc-100" }) {
+  return (
+    <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-4">
+      <div className="flex items-center justify-between">
+        <span className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500">{label}</span>
+        {Icon && <Icon size={14} className="text-zinc-600" />}
+      </div>
+      <div className={cx("mt-2 font-data text-2xl font-bold tabular-nums", tone)}>{value}</div>
+      {sub && <div className="mt-1 text-xs text-zinc-500">{sub}</div>}
+    </div>
+  );
+}
+
+/* =========================================================================
+   RISK STRIP  (persistent, always visible — the priority-#1 signal)
+   ========================================================================= */
+
+function RiskStripItem({ acc, metrics }) {
+  const m = STATUS_META[metrics.status];
+  const showLocked = metrics.status === "locked" || metrics.status === "failed";
+  return (
+    <div className={cx(
+      "flex min-w-[168px] shrink-0 flex-col gap-1.5 rounded-lg border px-3 py-2",
+      metrics.status === "failed" ? "border-rose-900 bg-rose-950/40" :
+      metrics.status === "locked" ? "border-yellow-900 bg-yellow-950/30" :
+      metrics.status === "target" ? "border-amber-900 bg-amber-950/20" :
+      "border-zinc-800 bg-zinc-900"
+    )}>
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-semibold text-zinc-300">{acc.name}</span>
+        <span className={cx("h-1.5 w-1.5 rounded-full", m.dot)} />
+      </div>
+      {showLocked ? (
+        <span className={cx("font-data text-sm font-bold", m.text)}>{m.label.toUpperCase()}</span>
+      ) : (
+        <div className="flex items-baseline gap-1">
+          <span className="font-data text-sm font-bold tabular-nums text-zinc-100">{fmtMoney(metrics.worstCaseBuffer)}</span>
+          <span className="text-[10px] text-zinc-500">buffer</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* =========================================================================
+   ACCOUNT CARD
+   ========================================================================= */
+
+function AccountCard({ acc, metrics, winRate, tradeCount, isTopRanked }) {
+  const dllPct = Math.min(100, (metrics.dailyLossSoFar / acc.dllThreshold) * 100);
+  const trailPct = metrics.trailLocked
+    ? 100
+    : Math.min(100, Math.max(0, ((acc.trailDistance - metrics.trailingBuffer) / acc.trailDistance) * 100));
+
+  const isDown = metrics.dailyPnL < 0;
+
+  return (
+    <div className={cx(
+      "flex flex-col gap-4 rounded-xl border p-5",
+      metrics.status === "failed" ? "border-rose-900 bg-rose-950/20" :
+      metrics.status === "locked" ? "border-yellow-900 bg-yellow-950/10" :
+      "border-zinc-800 bg-zinc-900"
+    )}>
+      <div className="flex items-start justify-between">
+        <div>
+          <div className="flex items-center gap-2">
+            <h3 className="font-semibold text-zinc-100">{acc.name}</h3>
+            {isTopRanked && (
+              <span className="inline-flex items-center gap-1 rounded-full border border-amber-800 bg-amber-950/40 px-2 py-0.5 text-[10px] font-semibold text-amber-400">
+                <Award size={10} /> Top WR
+              </span>
+            )}
+          </div>
+          <span className="text-xs text-zinc-500">{acc.tier} · {acc.size}</span>
+        </div>
+        <StatusPill status={metrics.status} />
+      </div>
+
+      <div>
+        <div className="flex items-baseline gap-2">
+          <span className="font-data text-3xl font-bold tabular-nums text-zinc-50">
+            {fmtMoney(metrics.current)}
+          </span>
+          <span className={cx("flex items-center gap-0.5 font-data text-sm font-semibold tabular-nums",
+            isDown ? "text-rose-400" : "text-emerald-400")}>
+            {isDown ? <TrendingDown size={13} /> : <TrendingUp size={13} />}
+            {fmtMoney(metrics.dailyPnL, { showSign: true })} today
+          </span>
+        </div>
+      </div>
+
+      <div>
+        <div className="mb-1 flex items-center justify-between text-xs">
+          <span className="font-medium text-zinc-400">Payout Progress</span>
+          <span className="font-data font-semibold text-amber-400">{fmtPct(metrics.progressToTarget, 0)}</span>
+        </div>
+        <ProgressBar pct={metrics.progressToTarget} colorClass="bg-amber-500" />
+        <div className="mt-1 text-[11px] text-zinc-500">
+          Target {fmtMoney(metrics.targetBalance)} · {fmtMoney(Math.max(0, metrics.targetBalance - metrics.current))} to go
+        </div>
+      </div>
+
+      <div>
+        <div className="mb-1 flex items-center justify-between text-xs">
+          <span className="font-medium text-zinc-400">Daily Loss Limit</span>
+          <span className="font-data font-semibold text-zinc-300">{fmtMoney(metrics.dllBuffer)} buffer</span>
+        </div>
+        <ProgressBar pct={dllPct} colorClass={dllPct >= 100 ? "bg-rose-500" : dllPct >= 70 ? "bg-yellow-400" : "bg-rose-600"} />
+        <div className="mt-1 text-[11px] text-zinc-500">
+          {fmtMoney(metrics.dailyLossSoFar)} of {fmtMoney(acc.dllThreshold)} limit used
+        </div>
+      </div>
+
+      <div>
+        <div className="mb-1 flex items-center justify-between text-xs">
+          <span className="font-medium text-zinc-400">Trailing Drawdown</span>
+          {metrics.trailLocked ? (
+            <span className="flex items-center gap-1 font-data font-semibold text-emerald-400">
+              <Lock size={11} /> Locked at Breakeven
+            </span>
+          ) : (
+            <span className="font-data font-semibold text-zinc-300">{fmtMoney(metrics.trailingBuffer)} buffer</span>
+          )}
+        </div>
+        <ProgressBar pct={trailPct} colorClass={metrics.trailLocked ? "bg-emerald-500" : trailPct >= 70 ? "bg-yellow-400" : "bg-sky-500"} />
+        <div className="mt-1 text-[11px] text-zinc-500">
+          Trail line {fmtMoney(metrics.trailingLine)} · peak {fmtMoney(metrics.peak)}
+        </div>
+      </div>
+
+      <div className="flex items-center justify-between border-t border-zinc-800 pt-3 text-xs">
+        <span className="text-zinc-500">
+          Win Rate <span className="font-data font-semibold text-zinc-200">{winRate === null ? "—" : fmtPct(winRate, 0)}</span>
+        </span>
+        <span className="text-zinc-500">
+          Trades <span className="font-data font-semibold text-zinc-200">{tradeCount}</span>
+        </span>
+      </div>
+    </div>
+  );
+}
+
+/* =========================================================================
+   LOG TRADE FORM
+   ========================================================================= */
+
+function LogTradeForm({ accounts, metricsByAccount, onSubmit }) {
+  const [accountId, setAccountId] = useState(accounts[0].id);
+  const [grade, setGrade] = useState("A");
+  const [phase, setPhase] = useState("phase2");
+  const [triggers, setTriggers] = useState([]);
+  const [pnl, setPnl] = useState("");
+  const [notes, setNotes] = useState("");
+
+  const selectedMetrics = metricsByAccount[accountId];
+  const blocked = selectedMetrics && (selectedMetrics.status === "locked" || selectedMetrics.status === "failed");
+
+  const pnlValid = pnl !== "" && !Number.isNaN(parseFloat(pnl));
+  const canSubmit = accountId && grade && phase && triggers.length > 0 && pnlValid && !blocked;
+
+  function toggleTrigger(t) {
+    setTriggers((prev) => (prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t]));
+  }
+
+  function handleSubmit(e) {
+    e.preventDefault();
+    if (!canSubmit) return;
+    onSubmit({ accountId, grade, phase, triggers, pnl: parseFloat(pnl), notes });
+    setPnl("");
+    setNotes("");
+    setTriggers([]);
+  }
+
+  const inputCls = "w-full rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none transition-colors focus:border-amber-600 focus:ring-1 focus:ring-amber-600";
+  const labelCls = "mb-1.5 block text-xs font-semibold uppercase tracking-wider text-zinc-500";
+
+  return (
+    <form onSubmit={handleSubmit} className="flex flex-col gap-4 rounded-xl border border-zinc-800 bg-zinc-900 p-5">
+      <h3 className="flex items-center gap-2 font-semibold text-zinc-100">
+        <Plus size={16} className="text-amber-400" /> Log Trade
+      </h3>
+
+      <div>
+        <label className={labelCls}>Account</label>
+        <select className={inputCls} value={accountId} onChange={(e) => setAccountId(e.target.value)}>
+          {accounts.map((a) => {
+            const m = metricsByAccount[a.id];
+            const disabled = m.status === "locked" || m.status === "failed";
+            return (
+              <option key={a.id} value={a.id}>
+                {a.name} — {a.tier} {a.size}{disabled ? ` (${STATUS_META[m.status].label})` : ""}
+              </option>
+            );
+          })}
+        </select>
+      </div>
+
+      {blocked && (
+        <div className="flex items-start gap-2 rounded-lg border border-rose-900 bg-rose-950/30 px-3 py-2 text-xs text-rose-300">
+          <AlertTriangle size={14} className="mt-0.5 shrink-0" />
+          <span>
+            {selectedMetrics.status === "failed"
+              ? "This account has breached its trailing drawdown and is disabled. No further trades can be logged."
+              : "This account hit its Daily Loss Limit and is locked for the session. Trading is disabled until the next session resets."}
+          </span>
+        </div>
+      )}
+
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className={labelCls}>Setup Grade</label>
+          <select className={inputCls} value={grade} onChange={(e) => setGrade(e.target.value)}>
+            {GRADES.map((g) => <option key={g} value={g}>{g}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className={labelCls}>PnL ($)</label>
+          <input
+            className={cx(inputCls, "font-data tabular-nums")}
+            type="number" step="1" placeholder="e.g. 340 or -180"
+            value={pnl} onChange={(e) => setPnl(e.target.value)}
+          />
+        </div>
+      </div>
+
+      <div>
+        <label className={labelCls}>NY Open Phase</label>
+        <select className={inputCls} value={phase} onChange={(e) => setPhase(e.target.value)}>
+          {PHASES.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
+        </select>
+      </div>
+
+      <div>
+        <label className={labelCls}>Execution Trigger</label>
+        <div className="flex flex-wrap gap-3">
+          {TRIGGERS.map((t) => (
+            <label key={t} className="flex cursor-pointer items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-300 hover:border-zinc-700">
+              <input type="checkbox" checked={triggers.includes(t)} onChange={() => toggleTrigger(t)}
+                className="h-3.5 w-3.5 accent-amber-500" />
+              {t}
+            </label>
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <label className={labelCls}>Notes (optional)</label>
+        <textarea className={inputCls} rows={2} placeholder="Context on the read, confluence, HTF level..."
+          value={notes} onChange={(e) => setNotes(e.target.value)} />
+      </div>
+
+      <button type="submit" disabled={!canSubmit}
+        className={cx("mt-1 rounded-lg px-4 py-2.5 text-sm font-semibold transition-colors",
+          canSubmit ? "bg-amber-500 text-zinc-950 hover:bg-amber-400" : "cursor-not-allowed bg-zinc-800 text-zinc-500")}>
+        Log Trade
+      </button>
+    </form>
+  );
+}
+
+/* =========================================================================
+   TRADE TABLE
+   ========================================================================= */
+
+function TradeTable({ trades, accountsById }) {
+  const sorted = [...trades].sort((a, b) => b.id - a.id);
+  return (
+    <div className="rounded-xl border border-zinc-800 bg-zinc-900">
+      <div className="border-b border-zinc-800 px-5 py-3">
+        <h3 className="text-sm font-semibold text-zinc-200">Recent Trades</h3>
+      </div>
+      <div className="custom-scroll max-h-[520px] overflow-y-auto">
+        <table className="w-full text-left text-sm">
+          <thead className="sticky top-0 bg-zinc-900">
+            <tr className="text-[11px] uppercase tracking-wider text-zinc-500">
+              <th className="px-5 py-2 font-semibold">Date</th>
+              <th className="px-3 py-2 font-semibold">Account</th>
+              <th className="px-3 py-2 font-semibold">Grade</th>
+              <th className="px-3 py-2 font-semibold">Phase</th>
+              <th className="px-3 py-2 font-semibold">Triggers</th>
+              <th className="px-5 py-2 text-right font-semibold">PnL</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-zinc-800">
+            {sorted.map((t) => (
+              <tr key={t.id} className="hover:bg-zinc-800/40">
+                <td className="px-5 py-2.5 text-zinc-400">{t.date}</td>
+                <td className="px-3 py-2.5 text-zinc-300">{accountsById[t.accountId]?.name}</td>
+                <td className="px-3 py-2.5"><GradeBadge grade={t.grade} /></td>
+                <td className="px-3 py-2.5"><PhaseBadge phase={t.phase} /></td>
+                <td className="px-3 py-2.5"><TriggerChips triggers={t.triggers} /></td>
+                <td className={cx("px-5 py-2.5 text-right font-data font-semibold tabular-nums",
+                  t.pnl >= 0 ? "text-emerald-400" : "text-rose-400")}>
+                  {fmtMoney(t.pnl, { showSign: true })}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+/* =========================================================================
+   PAYOUTS PANEL
+   ========================================================================= */
+
+function PayoutsPanel({ payouts, accountsById, accountRanking }) {
+  const paid = payouts.filter((p) => p.status === "Paid").reduce((s, p) => s + p.amount, 0);
+  const pending = payouts.filter((p) => p.status === "Processing").reduce((s, p) => s + p.amount, 0);
+  const cycles = payouts.filter((p) => p.status === "Paid").length;
+
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+        <StatCard label="Lifetime Paid Out" value={fmtMoney(paid)} Icon={Wallet} tone="text-emerald-400" />
+        <StatCard label="Pending Payouts" value={fmtMoney(pending)} Icon={Clock} tone="text-amber-400" />
+        <StatCard label="Payout Cycles" value={cycles} Icon={CheckCircle2} />
+        <StatCard label="Accounts Tracked" value={accountRanking.length} Icon={ShieldCheck} />
+      </div>
+
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
+        <div className="rounded-xl border border-zinc-800 bg-zinc-900 lg:col-span-3">
+          <div className="border-b border-zinc-800 px-5 py-3">
+            <h3 className="text-sm font-semibold text-zinc-200">Payout History</h3>
+          </div>
+          <table className="w-full text-left text-sm">
+            <thead>
+              <tr className="text-[11px] uppercase tracking-wider text-zinc-500">
+                <th className="px-5 py-2 font-semibold">Date</th>
+                <th className="px-3 py-2 font-semibold">Account</th>
+                <th className="px-3 py-2 text-right font-semibold">Amount</th>
+                <th className="px-5 py-2 text-right font-semibold">Status</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-zinc-800">
+              {payouts.map((p) => (
+                <tr key={p.id} className="hover:bg-zinc-800/40">
+                  <td className="px-5 py-2.5 text-zinc-400">{p.date}</td>
+                  <td className="px-3 py-2.5 text-zinc-300">{accountsById[p.accountId]?.name}</td>
+                  <td className="px-3 py-2.5 text-right font-data font-semibold tabular-nums text-zinc-100">{fmtMoney(p.amount)}</td>
+                  <td className="px-5 py-2.5 text-right">
+                    <span className={cx("rounded-full border px-2 py-0.5 text-[11px] font-medium",
+                      p.status === "Paid" ? "border-emerald-800 text-emerald-400" : "border-amber-800 text-amber-400")}>
+                      {p.status}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-5 lg:col-span-2">
+          <h3 className="mb-1 flex items-center gap-2 text-sm font-semibold text-zinc-200">
+            <Award size={15} className="text-amber-400" /> Scaling Recommendation
+          </h3>
+          <p className="mb-4 text-xs text-zinc-500">Ranked by win rate. Route A+ setups to the top account first.</p>
+          <div className="flex flex-col gap-2">
+            {accountRanking.map((r, i) => (
+              <div key={r.id} className={cx("flex items-center justify-between rounded-lg border px-3 py-2.5",
+                i === 0 ? "border-amber-800 bg-amber-950/20" : "border-zinc-800 bg-zinc-950")}>
+                <div className="flex items-center gap-2.5">
+                  <span className={cx("flex h-6 w-6 items-center justify-center rounded-full font-data text-xs font-bold",
+                    i === 0 ? "bg-amber-500 text-zinc-950" : "bg-zinc-800 text-zinc-400")}>
+                    {i + 1}
+                  </span>
+                  <div>
+                    <div className="text-sm font-medium text-zinc-200">{r.name}</div>
+                    <div className="text-[11px] text-zinc-500">{r.trades} trades logged</div>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="font-data text-sm font-bold tabular-nums text-zinc-100">{r.winRate === null ? "—" : fmtPct(r.winRate, 0)}</div>
+                  <div className="text-[10px] text-zinc-500">win rate</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* =========================================================================
+   ANALYTICS PANEL
+   ========================================================================= */
+
+function HeatCell({ bucket }) {
+  const wr = winRateOf(bucket);
+  if (wr === null) {
+    return <td className="border border-zinc-800 px-3 py-3 text-center text-xs text-zinc-600">—</td>;
+  }
+  const bg = wr >= 65 ? "bg-emerald-900/60" : wr >= 45 ? "bg-yellow-900/40" : "bg-rose-900/40";
+  const text = wr >= 65 ? "text-emerald-300" : wr >= 45 ? "text-yellow-300" : "text-rose-300";
+  return (
+    <td className={cx("border border-zinc-800 px-3 py-3 text-center", bg)}>
+      <div className={cx("font-data text-base font-bold tabular-nums", text)}>{fmtPct(wr, 0)}</div>
+      <div className="text-[10px] text-zinc-500">{bucket.wins}W / {bucket.total - bucket.wins}L</div>
+    </td>
+  );
+}
+
+const CHART_COLORS = { good: "#34d399", mid: "#facc15", bad: "#fb7185" };
+function barColor(wr) {
+  if (wr >= 65) return CHART_COLORS.good;
+  if (wr >= 45) return CHART_COLORS.mid;
+  return CHART_COLORS.bad;
+}
+
+function AnalyticsPanel({ trades }) {
+  const byGrade = aggregate(trades, (t) => t.grade);
+  const byPhase = aggregate(trades, (t) => t.phase);
+  const byMatrix = aggregate(trades, (t) => `${t.grade}|${t.phase}`);
+
+  const totalTrades = trades.length;
+  const totalWins = trades.filter((t) => t.pnl > 0).length;
+  const overallWR = totalTrades ? (totalWins / totalTrades) * 100 : null;
+  const netPnl = trades.reduce((s, t) => s + t.pnl, 0);
+
+  const gradeChart = GRADES.map((g) => ({
+    name: g, winRate: winRateOf(byGrade[g]) ?? 0, count: byGrade[g]?.total ?? 0,
+  }));
+  const phaseChart = PHASES.map((p) => ({
+    name: p.short, winRate: winRateOf(byPhase[p.id]) ?? 0, count: byPhase[p.id]?.total ?? 0,
+  }));
+
+  const p1wr = winRateOf(byPhase["phase1"]);
+  const p2wr = winRateOf(byPhase["phase2"]);
+  const edge = p1wr !== null && p2wr !== null ? p2wr - p1wr : null;
+
+  const tooltipStyle = { background: "#18181b", border: "1px solid #3f3f46", borderRadius: 8, fontSize: 12, color: "#e4e4e7" };
+
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+        <StatCard label="Total Trades" value={totalTrades} Icon={Activity} />
+        <StatCard label="Overall Win Rate" value={fmtPct(overallWR, 0)} Icon={Target} tone="text-amber-400" />
+        <StatCard label="Net PnL" value={fmtMoney(netPnl, { showSign: true })} Icon={DollarSign}
+          tone={netPnl >= 0 ? "text-emerald-400" : "text-rose-400"} />
+        <StatCard label="Best Grade" value="A+" sub={`${fmtPct(winRateOf(byGrade["A+"]), 0)} win rate`} Icon={Award} tone="text-amber-400" />
+      </div>
+
+      {edge !== null && (
+        <div className="flex items-start gap-3 rounded-xl border border-emerald-900 bg-emerald-950/20 px-5 py-4">
+          <Zap size={18} className="mt-0.5 shrink-0 text-emerald-400" />
+          <p className="text-sm text-zinc-300">
+            Phase 2 (mean reversion) trades are winning at{" "}
+            <span className="font-data font-semibold text-emerald-400">{fmtPct(p2wr, 0)}</span> vs{" "}
+            <span className="font-data font-semibold text-rose-400">{fmtPct(p1wr, 0)}</span> for Phase 1 (continuation) —
+            a <span className="font-data font-semibold text-emerald-400">{edge >= 0 ? "+" : ""}{edge.toFixed(0)}pt</span> edge
+            that supports the fair-price reversion thesis in this sample.
+          </p>
+        </div>
+      )}
+
+      <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-5">
+        <h3 className="mb-4 text-sm font-semibold text-zinc-200">Win Rate — Setup Grade × NY Session Phase</h3>
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse text-sm">
+            <thead>
+              <tr>
+                <th className="border border-zinc-800 bg-zinc-950 px-3 py-2 text-left text-[11px] uppercase tracking-wider text-zinc-500">Grade</th>
+                <th className="border border-zinc-800 bg-zinc-950 px-3 py-2 text-[11px] uppercase tracking-wider text-zinc-500">Phase 1</th>
+                <th className="border border-zinc-800 bg-zinc-950 px-3 py-2 text-[11px] uppercase tracking-wider text-zinc-500">Phase 2</th>
+              </tr>
+            </thead>
+            <tbody>
+              {GRADES.map((g) => (
+                <tr key={g}>
+                  <td className="border border-zinc-800 bg-zinc-950 px-3 py-3"><GradeBadge grade={g} /></td>
+                  <HeatCell bucket={byMatrix[`${g}|phase1`]} />
+                  <HeatCell bucket={byMatrix[`${g}|phase2`]} />
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-5">
+          <h3 className="mb-4 text-sm font-semibold text-zinc-200">Win Rate by Setup Grade</h3>
+          <ResponsiveContainer width="100%" height={220}>
+            <BarChart data={gradeChart} margin={{ top: 4, right: 8, left: -16, bottom: 0 }}>
+              <CartesianGrid stroke="#27272a" vertical={false} />
+              <XAxis dataKey="name" stroke="#71717a" fontSize={12} tickLine={false} axisLine={false} />
+              <YAxis stroke="#71717a" fontSize={12} tickLine={false} axisLine={false} domain={[0, 100]} />
+              <Tooltip contentStyle={tooltipStyle} formatter={(v) => [`${v.toFixed(0)}%`, "Win Rate"]} cursor={{ fill: "#27272a" }} />
+              <Bar dataKey="winRate" radius={[4, 4, 0, 0]}>
+                {gradeChart.map((d, i) => <Cell key={i} fill={barColor(d.winRate)} />)}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+
+        <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-5">
+          <h3 className="mb-4 text-sm font-semibold text-zinc-200">Win Rate by NY Session Phase</h3>
+          <ResponsiveContainer width="100%" height={220}>
+            <BarChart data={phaseChart} margin={{ top: 4, right: 8, left: -16, bottom: 0 }}>
+              <CartesianGrid stroke="#27272a" vertical={false} />
+              <XAxis dataKey="name" stroke="#71717a" fontSize={12} tickLine={false} axisLine={false} />
+              <YAxis stroke="#71717a" fontSize={12} tickLine={false} axisLine={false} domain={[0, 100]} />
+              <Tooltip contentStyle={tooltipStyle} formatter={(v) => [`${v.toFixed(0)}%`, "Win Rate"]} cursor={{ fill: "#27272a" }} />
+              <Bar dataKey="winRate" radius={[4, 4, 0, 0]}>
+                {phaseChart.map((d, i) => <Cell key={i} fill={barColor(d.winRate)} />)}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* =========================================================================
+   MAIN
+   ========================================================================= */
+
+const TABS = [
+  { id: "overview", label: "Overview", Icon: Activity },
+  { id: "log", label: "Log Trade", Icon: Plus },
+  { id: "payouts", label: "Payouts", Icon: Wallet },
+  { id: "analytics", label: "Analytics", Icon: BarChart3 },
+];
+
+export default function TradingTerminal() {
+  const [accounts, setAccounts] = useState(initialAccounts);
+  const [trades, setTrades] = useState(initialTrades);
+  const [payouts] = useState(initialPayouts);
+  const [trailMode, setTrailMode] = useState("eod");
+  const [activeTab, setActiveTab] = useState("overview");
+  const [now, setNow] = useState(nyNow());
+
+  useEffect(() => {
+    const id = setInterval(() => setNow(nyNow()), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  const accountsById = useMemo(() => Object.fromEntries(accounts.map((a) => [a.id, a])), [accounts]);
+
+  const metricsByAccount = useMemo(() => {
+    const out = {};
+    accounts.forEach((a) => { out[a.id] = computeAccountMetrics(a, trailMode); });
+    return out;
+  }, [accounts, trailMode]);
+
+  const tradesByAccount = useMemo(() => aggregate(trades, (t) => t.accountId), [trades]);
+
+  const accountRanking = useMemo(() => {
+    return accounts
+      .map((a) => ({
+        id: a.id, name: a.name,
+        winRate: winRateOf(tradesByAccount[a.id]),
+        trades: tradesByAccount[a.id]?.total ?? 0,
+      }))
+      .sort((a, b) => (b.winRate ?? -1) - (a.winRate ?? -1));
+  }, [accounts, tradesByAccount]);
+
+  const topRankedId = accountRanking[0]?.trades > 0 ? accountRanking[0].id : null;
+
+  const phase = sessionPhaseInfo(now);
+  const timeStr = now.toLocaleTimeString("en-US", { hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit" });
+
+  function handleLogTrade({ accountId, grade, phase, triggers, pnl, notes }) {
+    setAccounts((prev) => prev.map((a) => {
+      if (a.id !== accountId) return a;
+      const newBalance = a.currentBalance + pnl;
+      return {
+        ...a,
+        currentBalance: newBalance,
+        currentEquity: newBalance,
+        peakBalance: Math.max(a.peakBalance, newBalance),
+        peakEquity: Math.max(a.peakEquity, newBalance),
+      };
+    }));
+    setTrades((prev) => [
+      ...prev,
+      { id: prev.length ? Math.max(...prev.map((t) => t.id)) + 1 : 1, accountId, date: "Today", grade, phase, triggers, pnl, notes },
+    ]);
+  }
+
+  function handleResetSession() {
+    setAccounts((prev) => prev.map((a) => ({
+      ...a,
+      dailyStartBalance: a.currentBalance,
+      currentEquity: a.currentBalance,
+    })));
+  }
+
+  const totalEquity = accounts.reduce((s, a) => s + metricsByAccount[a.id].current, 0);
+  const totalDailyPnl = accounts.reduce((s, a) => s + metricsByAccount[a.id].dailyPnL, 0);
+  const activeCount = accounts.filter((a) => metricsByAccount[a.id].status === "active" || metricsByAccount[a.id].status === "target").length;
+
+  return (
+    <div className="font-display min-h-screen bg-zinc-950 text-zinc-100">
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+        .font-display { font-family: 'Inter', system-ui, -apple-system, sans-serif; }
+        .font-data { font-family: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace; }
+        .custom-scroll::-webkit-scrollbar { height: 6px; width: 6px; }
+        .custom-scroll::-webkit-scrollbar-track { background: transparent; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 9999px; }
+        select { color-scheme: dark; }
+      `}</style>
+
+      {/* ---------- Header ---------- */}
+      <div className="border-b border-zinc-800 bg-zinc-950/95 px-4 py-3 backdrop-blur sm:px-6">
+        <div className="mx-auto flex max-w-[1400px] flex-wrap items-center justify-between gap-3">
+          <div>
+            <div className="flex items-center gap-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-500">
+                <Zap size={16} className="text-zinc-950" />
+              </div>
+              <div>
+                <h1 className="text-sm font-bold leading-none text-zinc-50">HTF MEAN REVERSION · LTF CONTINUATION</h1>
+                <span className="text-[11px] text-zinc-500">Multi-Account Prop Desk Terminal</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="text-right">
+              <div className="font-data text-sm font-semibold tabular-nums text-zinc-200">{timeStr} <span className="text-zinc-500">NY</span></div>
+              <div className={cx("text-[11px] font-medium", phase.tone)}>{phase.label}</div>
+            </div>
+
+            <div className="flex items-center rounded-lg border border-zinc-800 bg-zinc-900 p-0.5 text-xs font-semibold">
+              <button onClick={() => setTrailMode("realtime")}
+                className={cx("rounded-md px-2.5 py-1.5 transition-colors", trailMode === "realtime" ? "bg-amber-500 text-zinc-950" : "text-zinc-400 hover:text-zinc-200")}>
+                Real-Time Trail
+              </button>
+              <button onClick={() => setTrailMode("eod")}
+                className={cx("rounded-md px-2.5 py-1.5 transition-colors", trailMode === "eod" ? "bg-amber-500 text-zinc-950" : "text-zinc-400 hover:text-zinc-200")}>
+                EOD Trail
+              </button>
+            </div>
+
+            <button onClick={handleResetSession}
+              className="flex items-center gap-1.5 rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-1.5 text-xs font-semibold text-zinc-300 transition-colors hover:border-zinc-700 hover:text-zinc-100">
+              <RefreshCw size={13} /> Start New Session
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* ---------- Persistent Risk Strip ---------- */}
+      <div className="border-b border-zinc-800 bg-zinc-950 px-4 py-3 sm:px-6">
+        <div className="mx-auto max-w-[1400px]">
+          <div className="mb-2 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-zinc-500">
+            <ShieldAlert size={12} /> Drawdown Buffer — All Accounts
+          </div>
+          <div className="custom-scroll flex gap-3 overflow-x-auto pb-1">
+            {accounts.map((a) => (
+              <RiskStripItem key={a.id} acc={a} metrics={metricsByAccount[a.id]} />
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* ---------- Tabs ---------- */}
+      <div className="border-b border-zinc-800 px-4 sm:px-6">
+        <div className="mx-auto flex max-w-[1400px] gap-1">
+          {TABS.map((t) => {
+            const Icon = t.Icon;
+            const activeCls = activeTab === t.id ? "border-amber-500 text-amber-400" : "border-transparent text-zinc-500 hover:text-zinc-300";
+            return (
+              <button key={t.id} onClick={() => setActiveTab(t.id)}
+                className={cx("flex items-center gap-1.5 border-b-2 px-3 py-3 text-sm font-semibold transition-colors", activeCls)}>
+                <Icon size={14} /> {t.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ---------- Content ---------- */}
+      <div className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6">
+        {activeTab === "overview" && (
+          <div className="flex flex-col gap-6">
+            <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+              <StatCard label="Total Equity" value={fmtMoney(totalEquity)} Icon={DollarSign} />
+              <StatCard label="Today's PnL" value={fmtMoney(totalDailyPnl, { showSign: true })} Icon={Activity}
+                tone={totalDailyPnl >= 0 ? "text-emerald-400" : "text-rose-400"} />
+              <StatCard label="Accounts Tradeable" value={`${activeCount} / ${accounts.length}`} Icon={ShieldCheck} />
+              <StatCard label="Trail Mode" value={trailMode === "realtime" ? "Real-Time" : "EOD"} Icon={Lock} />
+            </div>
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
+              {accounts.map((a) => (
+                <AccountCard
+                  key={a.id}
+                  acc={a}
+                  metrics={metricsByAccount[a.id]}
+                  winRate={winRateOf(tradesByAccount[a.id])}
+                  tradeCount={tradesByAccount[a.id]?.total ?? 0}
+                  isTopRanked={a.id === topRankedId}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {activeTab === "log" && (
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
+            <div className="lg:col-span-2">
+              <LogTradeForm accounts={accounts} metricsByAccount={metricsByAccount} onSubmit={handleLogTrade} />
+            </div>
+            <div className="lg:col-span-3">
+              <TradeTable trades={trades} accountsById={accountsById} />
+            </div>
+          </div>
+        )}
+
+        {activeTab === "payouts" && (
+          <PayoutsPanel payouts={payouts} accountsById={accountsById} accountRanking={accountRanking} />
+        )}
+
+        {activeTab === "analytics" && (
+          <AnalyticsPanel trades={trades} />
+        )}
+      </div>
+    </div>
+  );
+}
